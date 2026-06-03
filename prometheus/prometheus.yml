@@ -1,0 +1,104 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: prometheus
+          tier: infra
+
+  - job_name: 'loki'
+    static_configs:
+      - targets: ['loki:3100']
+        labels:
+          service: loki
+          tier: infra
+
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+        labels:
+          service: grafana
+          tier: infra
+
+  - job_name: 'otel-collector'
+    static_configs:
+      - targets: ['otel-collector:8888']
+        labels:
+          service: otel-collector
+          tier: infra
+
+  - job_name: 'log-collector'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['log-collector:9095']
+        labels:
+          service: log-collector
+          tier: agent
+
+  - job_name: 'kirov-api-gateway'
+    scrape_interval: 10s
+    static_configs:
+      - targets: '{{ env "API_GATEWAY_TARGETS" | default "api-gateway:8080" }}'
+        labels:
+          service: api-gateway
+          tier: backend
+
+  - job_name: 'kirov-auth-service'
+    scrape_interval: 10s
+    static_configs:
+      - targets: '{{ env "AUTH_SERVICE_TARGETS" | default "auth-service:8081" }}'
+        labels:
+          service: auth-service
+          tier: backend
+
+  - job_name: 'kirov-threat-detection'
+    scrape_interval: 5s
+    static_configs:
+      - targets: '{{ env "THREAT_DETECTION_TARGETS" | default "threat-detection:8082" }}'
+        labels:
+          service: threat-detection
+          tier: backend
+
+  - job_name: 'kirov-siem'
+    scrape_interval: 10s
+    static_configs:
+      - targets: '{{ env "SIEM_TARGETS" | default "siem:8083" }}'
+        labels:
+          service: siem
+          tier: backend
+
+  - job_name: 'kirov-incident-response'
+    scrape_interval: 10s
+    static_configs:
+      - targets: '{{ env "INCIDENT_RESPONSE_TARGETS" | default "incident-response:8084" }}'
+        labels:
+          service: incident-response
+          tier: backend
+
+  - job_name: 'kirov-vulnerability-scanner'
+    scrape_interval: 30s
+    static_configs:
+      - targets: '{{ env "VULNERABILITY_SCANNER_TARGETS" | default "vuln-scanner:8085" }}'
+        labels:
+          service: vulnerability-scanner
+          tier: backend
+
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: '{{ env "NODE_EXPORTER_TARGETS" | default "node-exporter:9100" }}'
+        labels:
+          service: node
+          tier: infra

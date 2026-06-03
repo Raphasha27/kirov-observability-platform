@@ -1,0 +1,128 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: otel-collector
+          scrape_interval: 15s
+          static_configs:
+            - targets:
+                - 0.0.0.0:8888
+
+processors:
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+    send_batch_max_size: 2048
+
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+    spike_limit_mib: 128
+
+  attributes:
+    actions:
+      - key: service.name
+        from_attribute: service.name
+        action: upsert
+      - key: service.namespace
+        value: "kirov"
+        action: insert
+      - key: deployment.environment
+        value: "production"
+        action: upsert
+
+  filter:
+    error_mode: ignore
+    traces:
+      span:
+        - 'attributes["http.target"] =~ "healthz|metrics"'
+    metrics:
+      metric:
+        - 'IsMatch(name, "otelcol.*")'
+
+  resource:
+    attributes:
+      - key: cloud.platform
+        value: "kirov-infra"
+        action: insert
+
+exporters:
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    namespace: kirov
+    send_timestamps: true
+    metric_expiration: 5m
+    resource_to_telemetry_conversion:
+      enabled: true
+
+  loki:
+    endpoint: http://loki:3100/loki/api/v1/push
+    tls:
+      insecure: true
+    default_labels_enabled:
+      job: true
+      instance: true
+      service.name: true
+      service.namespace: true
+    tenants:
+      enabled: false
+    labels:
+      attributes:
+        - service.name
+        - service.namespace
+        - level
+        - event_type
+
+  logging:
+    verbosity: detailed
+    sampling_initial: 5
+    sampling_thereafter: 200
+
+  otlp:
+    endpoint: "localhost:4317"
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    traces:
+      receivers:
+        - otlp
+      processors:
+        - memory_limiter
+        - attributes
+        - batch
+      exporters:
+        - logging
+        - otlp
+
+    metrics:
+      receivers:
+        - otlp
+        - prometheus
+      processors:
+        - memory_limiter
+        - attributes
+        - batch
+      exporters:
+        - prometheus
+        - logging
+
+    logs:
+      receivers:
+        - otlp
+      processors:
+        - memory_limiter
+        - attributes
+        - filter
+        - batch
+      exporters:
+        - loki
+        - logging

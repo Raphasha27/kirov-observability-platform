@@ -1,0 +1,106 @@
+groups:
+  - name: kirov-alerts
+    interval: 30s
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          rate(http_requests_total{status=~"5.."}[5m])
+          /
+          rate(http_requests_total[5m])
+          > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "High error rate on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} has error rate {{ $value | humanizePercentage }} over the last 5 minutes (threshold: 5%)."
+
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Service {{ $labels.service }} is down"
+          description: "{{ $labels.service }} at {{ $labels.instance }} has been unreachable for more than 1 minute."
+
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.99,
+            rate(http_request_duration_seconds_bucket[5m])
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High latency on {{ $labels.service }}"
+          description: "p99 latency for {{ $labels.service }} is {{ $value }}s (threshold: 2s)."
+
+      - alert: DiskSpaceWarning
+        expr: |
+          (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.1
+        for: 2m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Low disk space on {{ $labels.instance }}"
+          description: "{{ $labels.instance }} has {{ $value | humanizePercentage }} disk space remaining (threshold: 10%)."
+
+      - alert: TooManyAlerts
+        expr: |
+          rate(ALERTS[1m]) > 50
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Alert storm detected"
+          description: "More than 50 alerts per minute being fired. Current rate: {{ $value }}/min."
+
+      - alert: HighMemoryUsage
+        expr: |
+          (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "{{ $labels.instance }} memory usage is {{ $value | humanizePercentage }} (threshold: 90%)."
+
+      - alert: HighCPUUsage
+        expr: |
+          100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "{{ $labels.instance }} CPU usage is {{ $value }}% (threshold: 85%)."
+
+      - alert: OTelCollectorDroppedSpans
+        expr: |
+          rate(otelcol_exporter_send_failed_spans_count[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "OpenTelemetry collector dropping spans"
+          description: "OTel collector on {{ $labels.instance }} is dropping spans at rate {{ $value }}/s."
+
+      - alert: LogCollectorHighBacklog
+        expr: |
+          log_collector_buffer_entries > 900
+        for: 1m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Log collector buffer near capacity"
+          description: "Log collector buffer has {{ $value }} entries (capacity: 1000)."

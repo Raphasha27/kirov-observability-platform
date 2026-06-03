@@ -1,0 +1,72 @@
+version: '3.8'
+services:
+  prometheus:
+    image: prom/prometheus:v2.54.0
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=90d'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+
+  loki:
+    image: grafana/loki:3.1.0
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/loki-config.yml
+      - loki_data:/loki
+    command:
+      - '-config.file=/etc/loki/loki-config.yml'
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=kirov-secure
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - loki
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.110.0
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "8888:8888"
+      - "8889:8889"
+    volumes:
+      - ./otel/otel-config.yml:/etc/otel/config.yml
+    command:
+      - '--config=/etc/otel/config.yml'
+
+  log-collector:
+    build: ./agent
+    ports:
+      - "9095:9095"
+    environment:
+      - LOKI_URL=http://loki:3100
+      - OTEL_ENDPOINT=otel-collector:4317
+      - PROMETHEUS_PUSHGATEWAY=http://prometheus:9090
+      - AGENT_PORT=9095
+      - LOG_LEVEL=INFO
+    depends_on:
+      - loki
+      - otel-collector
+
+volumes:
+  prometheus_data:
+  loki_data:
+  grafana_data:
