@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Logs
+*.log
+
+# Dependencies
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Vercel
+.vercel
+
+# Prometheus/Grafana data
+prometheus/data/
+grafana/data/
+loki/data/
+
+# Docker
+docker-compose.override.yml
+
+# Secrets
+*.pem
+*.key
+*.cert
