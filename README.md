@@ -2,42 +2,19 @@
 
 Centralized logging, metrics, and monitoring system for the **Kirov Security** ecosystem. Built on open-source standards: **Grafana**, **Loki**, **Prometheus**, and **OpenTelemetry**, with a lightweight Python log collector agent.
 
+
 ## Architecture
 
 ```mermaid
-flowchart LR
-    subgraph Services
-        API[API Gateway]
-        AUTH[Auth Service]
-        THREAT[Threat Detection]
-        SIEM[SIEM Engine]
-        IR[Incident Response]
-        VULN[Vuln Scanner]
-    end
-
-    subgraph Agent
-        LC[Log Collector<br/>:9095]
-    end
-
-    subgraph Backend
-        LOKI[Loki<br/>:3100]
-        PROM[Prometheus<br/>:9090]
-        OTel[OTel Collector<br/>:4317]
-    end
-
-    subgraph Frontend
-        GRAF[Grafana<br/>:3000]
-    end
-
-    Services -->|logs & metrics| LC
-    LC -->|JSON push| LOKI
-    LC -->|OTLP HTTP| OTel
-    Services -->|/metrics scrape| PROM
-    OTel -->|metrics| PROM
-    OTel -->|logs| LOKI
-    GRAF -->|PromQL| PROM
-    GRAF -->|LogQL| LOKI
+graph LR
+    USER[User] --> API[FastAPI]
+    API --> PROC[Processor]
+    PROC --> DB[(Database)]
+    API --> AUTH[Auth Layer]
+    PROC --> AI[AI/ML Engine]
 ```
+
+Microservices-based architecture with API Gateway, authentication layer, PostgreSQL persistence, and event-driven communication.
 
 ## Quick Start
 
